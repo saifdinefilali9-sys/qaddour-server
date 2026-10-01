@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>قدور</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #111;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 500px;
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 42px;
+      margin: 0 0 10px;
+    }
+
+    .status {
+      color: #aaa;
+      margin-bottom: 40px;
+    }
+
+    button {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      background: #222;
+      color: white;
+      font-size: 24px;
+      box-shadow: 0 0 0 8px #1b1b1b;
+      cursor: pointer;
+    }
+
+    button:active {
+      transform: scale(.96);
+    }
+
+    .message {
+      margin-top: 40px;
+      min-height: 60px;
+      line-height: 1.8;
+      color: #ddd;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app">
+    <h1>قدور</h1>
+
+    <div class="status" id="status">
+      اضغط وتحدث معي
+    </div>
+
+    <button id="talkButton">
+      تحدث
+    </button>
+
+    <div class="message" id="message"></div>
+  </div>
+
+<script>
+const SERVER_URL = "https://qaddour-server.vercel.app";
+
+const button = document.getElementById("talkButton");
+const statusText = document.getElementById("status");
+const message = document.getElementById("message");
+
+const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
+
+let recognition;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = "ar-DZ";
+  recognition.interimResults = false;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    statusText.textContent = "أستمع إليك...";
+    button.textContent = "استماع";
+  };
+
+  recognition.onend = () => {
+    button.textContent = "تحدث";
+  };
+
+  recognition.onerror = () => {
+    statusText.textContent = "حدث خطأ في الميكروفون";
+    button.textContent = "تحدث";
+  };
+
+  recognition.onresult = async (event) => {
+    const text = event.results[0][0].transcript;
+
+    message.textContent = "أنت: " + text;
+    statusText.textContent = "قدور يفكر...";
+
+    try {
+      const response = await fetch(SERVER_URL + "/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: text
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Server error");
+      }
+
+      message.textContent = "قدور: " + data.reply;
+      statusText.textContent = "اضغط وتحدث معي";
+
+      speak(data.reply);
+
+    } catch (error) {
+      console.error(error);
+      statusText.textContent = "تعذر الاتصال بالخادم";
+      message.textContent = "تأكد من أن الخادم يعمل.";
+    }
+  };
+
+} else {
+  statusText.textContent =
+    "المتصفح لا يدعم التعرف على الصوت";
+}
+
+button.addEventListener("click", () => {
+  if (!recognition) return;
+
+  try {
+    recognition.start();
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+
+  speechSynthesis.cancel();
+
+  const speech = new SpeechSynthesisUtterance(text);
+  speech.lang = "ar-DZ";
+  speech.rate = 1;
+  speech.pitch = 1;
+
+  speechSynthesis.speak(speech);
+}
+</script>
+
+</body>
+</html>
