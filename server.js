@@ -9,22 +9,26 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// اختبار الخادم
 app.get("/", (req, res) => {
   res.send("قدور يعمل بنجاح 🤖");
 });
 
+// استقبال رسالة من صفحة قدور
 app.post("/ask", async (req, res) => {
   try {
     const message = req.body?.message;
 
-    if (!message) {
+    if (!message || typeof message !== "string") {
       return res.status(400).json({
-        error: "لم يتم إرسال رسالة"
+        error: "لم يتم إرسال رسالة صحيحة"
       });
     }
 
     const response = await client.responses.create({
       model: "gpt-5.6-luna",
+      instructions:
+        "أنت قدور، مساعد ذكي يتحدث العربية بطريقة ودودة وواضحة ومختصرة.",
       input: message
     });
 
@@ -33,10 +37,10 @@ app.post("/ask", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("OpenAI error:", error);
+    console.error("Qaddour error:", error);
 
     res.status(500).json({
-      error: "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي"
+      error: "تعذر الاتصال بالذكاء الاصطناعي"
     });
   }
 });
